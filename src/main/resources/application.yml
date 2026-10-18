@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: task-backend
+  profiles:
+    default: dev
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  jackson:
+    time-zone: America/Sao_Paulo
+
+# Admin REST API do Keycloak (cadastro de usuários). O segredo abaixo é apenas de desenvolvimento;
+# em qualquer outro ambiente defina KEYCLOAK_ADMIN_CLIENT_SECRET.
+keycloak:
+  admin:
+    url: ${KEYCLOAK_ADMIN_URL:http://localhost:8180}
+    realm: tarefas
+    client-id: tarefas-api
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:tarefas-api-secret-dev}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

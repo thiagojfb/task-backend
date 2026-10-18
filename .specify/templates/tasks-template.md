@@ -9,7 +9,7 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: Tests are MANDATORY (Constituição, Princípio III — TDD com cobertura 100%). Every user story MUST include unit test tasks (JUnit 5 + Mockito) and integration test tasks (`@SpringBootTest` + MockMvc) that are written and FAIL before the implementation tasks. The final phase MUST include a `./mvnw verify` task confirming `jacoco:check` at 100%.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -21,10 +21,11 @@ description: "Task list template for feature implementation"
 
 ## Path Conventions
 
-- **Single project**: `src/`, `tests/` at repository root
+- **Spring Boot / Maven (DEFAULT)**: `src/main/java/com/task/task_backend/{controller,service,repository,dto,entity,mapper,config,exception}/`, `src/main/resources/db/migration/`, `src/test/java/com/task/task_backend/{unit,integration}/`
 - **Web app**: `backend/src/`, `frontend/src/`
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+- Paths shown below assume the Spring Boot layout - adjust based on plan.md structure
+- Nomes de arquivos, classes e testes em português (ex.: `TarefaService.java`, `TarefaServiceTest.java`)
 
 <!--
   ============================================================================
@@ -63,12 +64,14 @@ description: "Task list template for feature implementation"
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T004 Setup H2 (modo arquivo) + Flyway baseline migration in src/main/resources/db/migration/V1__*.sql
+- [ ] T005 [P] Configure Spring Security OAuth2 Resource Server (Keycloak JWT) in src/main/java/com/task/task_backend/config/SegurancaConfig.java
+- [ ] T006 [P] Configure springdoc-openapi (Swagger UI, bearerAuth scheme) in src/main/java/com/task/task_backend/config/OpenApiConfig.java
+- [ ] T007 Create base entities/DTOs (records) that all stories depend on
+- [ ] T008 Configure @RestControllerAdvice with ProblemDetail and SLF4J logging in src/main/java/com/task/task_backend/exception/
+- [ ] T009 Setup application-{perfil}.yml profiles and externalized configuration
+- [ ] T010 [P] Configure JaCoCo `check` at 100% (lines + branches) in pom.xml with justified exclusions
+- [ ] T011 [P] Create Dockerfile (multi-stage) and compose.yaml (app + Keycloak + volume H2) with keycloak/realm-export.json
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -80,21 +83,25 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 1 (MANDATORY — Princípio III) ⚠️
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T012 [P] [US1] Unit test for [Service] in src/test/java/com/task/task_backend/unit/service/[Nome]ServiceTest.java
+- [ ] T013 [P] [US1] Unit test for [Controller] (WebMvcTest + spring-security-test) in src/test/java/com/task/task_backend/unit/controller/[Nome]ControllerTest.java
+- [ ] T014 [P] [US1] Integration test for [user journey] in src/test/java/com/task/task_backend/integration/[Nome]IT.java
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T015 [P] [US1] Create Flyway migration V{n}__[descricao].sql in src/main/resources/db/migration/
+- [ ] T016 [P] [US1] Create [Entidade] entity (Lombok, sem @Data) in src/main/java/com/task/task_backend/entity/[Entidade].java
+- [ ] T017 [P] [US1] Create DTOs (records, @Schema em português) in src/main/java/com/task/task_backend/dto/
+- [ ] T018 [P] [US1] Create [Entidade]Mapper (MapStruct) in src/main/java/com/task/task_backend/mapper/
+- [ ] T019 [US1] Create [Entidade]Repository in src/main/java/com/task/task_backend/repository/
+- [ ] T020 [US1] Implement [Nome]Service in src/main/java/com/task/task_backend/service/ (depends on T016–T019)
+- [ ] T021 [US1] Implement [Nome]Controller with @Operation/@ApiResponses and @PreAuthorize in src/main/java/com/task/task_backend/controller/
+- [ ] T022 [US1] Add validation (Bean Validation, mensagens em português) and business exceptions
+- [ ] T023 [US1] Add logging (SLF4J via @Slf4j) for user story 1 operations
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -106,17 +113,17 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 2 (MANDATORY — Princípio III) ⚠️
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T024 [P] [US2] Unit tests for [Service]/[Controller] in src/test/java/com/task/task_backend/unit/
+- [ ] T025 [P] [US2] Integration test for [user journey] in src/test/java/com/task/task_backend/integration/[Nome]IT.java
 
 ### Implementation for User Story 2
 
-- [ ] T020 [P] [US2] Create [Entity] model in src/models/[entity].py
-- [ ] T021 [US2] Implement [Service] in src/services/[service].py
-- [ ] T022 [US2] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T023 [US2] Integrate with User Story 1 components (if needed)
+- [ ] T026 [P] [US2] Create migration + [Entidade] entity + DTOs + Mapper
+- [ ] T027 [US2] Implement [Nome]Service in src/main/java/com/task/task_backend/service/
+- [ ] T028 [US2] Implement [Nome]Controller (OpenAPI + segurança) in src/main/java/com/task/task_backend/controller/
+- [ ] T029 [US2] Integrate with User Story 1 components (if needed)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -128,16 +135,16 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 3 (MANDATORY — Princípio III) ⚠️
 
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T030 [P] [US3] Unit tests for [Service]/[Controller] in src/test/java/com/task/task_backend/unit/
+- [ ] T031 [P] [US3] Integration test for [user journey] in src/test/java/com/task/task_backend/integration/[Nome]IT.java
 
 ### Implementation for User Story 3
 
-- [ ] T026 [P] [US3] Create [Entity] model in src/models/[entity].py
-- [ ] T027 [US3] Implement [Service] in src/services/[service].py
-- [ ] T028 [US3] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T032 [P] [US3] Create migration + [Entidade] entity + DTOs + Mapper
+- [ ] T033 [US3] Implement [Nome]Service in src/main/java/com/task/task_backend/service/
+- [ ] T034 [US3] Implement [Nome]Controller (OpenAPI + segurança) in src/main/java/com/task/task_backend/controller/
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -151,11 +158,13 @@ Examples of foundational tasks (adjust based on your project):
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] TXXX [P] Documentation updates in docs/
+- [ ] TXXX [P] Documentation updates (README em português) in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
-- [ ] TXXX Security hardening
+- [ ] TXXX Cover remaining branches to reach 100% JaCoCo (lines + branches)
+- [ ] TXXX Verify Swagger UI (/swagger-ui.html) reflects all endpoints with descrições em português
+- [ ] TXXX Security hardening (endpoints públicos explicitamente listados, deny-by-default)
+- [ ] TXXX Run `./mvnw verify` (tests + jacoco:check 100%) and `docker compose up --build`
 - [ ] TXXX Run quickstart.md validation
 
 ---
@@ -179,8 +188,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Within Each User Story
 
-- Tests (if included) MUST be written and FAIL before implementation
-- Models before services
+- Tests MUST be written and FAIL before implementation (Princípio III)
+- Migration → entity → DTO/mapper → repository → service → controller
 - Services before endpoints
 - Core implementation before integration
 - Story complete before moving to next priority
@@ -199,13 +208,13 @@ Examples of foundational tasks (adjust based on your project):
 ## Parallel Example: User Story 1
 
 ```bash
-# Launch all tests for User Story 1 together (if tests requested):
-Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
-Task: "Integration test for [user journey] in tests/integration/test_[name].py"
+# Launch all tests for User Story 1 together (mandatory):
+Task: "Unit test for [Service] in src/test/java/com/task/task_backend/unit/service/[Nome]ServiceTest.java"
+Task: "Integration test for [user journey] in src/test/java/com/task/task_backend/integration/[Nome]IT.java"
 
-# Launch all models for User Story 1 together:
-Task: "Create [Entity1] model in src/models/[entity1].py"
-Task: "Create [Entity2] model in src/models/[entity2].py"
+# Launch all entities/DTOs for User Story 1 together:
+Task: "Create [Entidade] entity in src/main/java/com/task/task_backend/entity/[Entidade].java"
+Task: "Create DTOs (records) in src/main/java/com/task/task_backend/dto/"
 ```
 
 ---

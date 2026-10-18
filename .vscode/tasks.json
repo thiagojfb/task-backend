@@ -1,0 +1,77 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "keycloak: subir",
+      "detail": "Sobe apenas o Keycloak do Docker Compose (porta 8180) e aguarda ficar saudável",
+      "type": "shell",
+      "command": "docker compose up -d --wait keycloak",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "api: remover container",
+      "detail": "Remove o container da API (libera a porta 8081 e o arquivo H2; só parar mantém a porta presa no Docker Desktop)",
+      "type": "shell",
+      "command": "docker compose rm -sf app",
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "maven: compilar",
+      "detail": "Compila pelo Maven (gera os *MapperImpl do MapStruct em target/classes) — o launcher Java usa essas classes",
+      "type": "shell",
+      "command": "./mvnw -q compile",
+      "problemMatcher": ["$tsc"],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "api: preparar ambiente local",
+      "detail": "Remove o container da API, garante o Keycloak no ar e compila pelo Maven — nesta ordem",
+      "dependsOn": ["api: remover container", "keycloak: subir", "maven: compilar"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "api: preparar sem Keycloak",
+      "detail": "Remove o container da API e compila pelo Maven (Keycloak já deve estar no ar)",
+      "dependsOn": ["api: remover container", "maven: compilar"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "keycloak: parar",
+      "detail": "Para o Keycloak (os dados ficam em ./dados/keycloak)",
+      "type": "shell",
+      "command": "docker compose stop keycloak",
+      "problemMatcher": []
+    },
+    {
+      "label": "compose: subir tudo (API em container)",
+      "detail": "Keycloak + API em containers; API na porta 8081 do host",
+      "type": "shell",
+      "command": "docker compose up -d --build --wait",
+      "options": { "env": { "APP_PORTA": "8081" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "compose: parar tudo",
+      "type": "shell",
+      "command": "docker compose down",
+      "problemMatcher": []
+    },
+    {
+      "label": "maven: verify (testes + cobertura 100%)",
+      "type": "shell",
+      "command": "./mvnw verify",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "keycloak: token da ana (copiar para o Swagger)",
+      "type": "shell",
+      "command": "curl -s -X POST http://localhost:8180/realms/tarefas/protocol/openid-connect/token -d grant_type=password -d client_id=tarefas-teste -d username=ana -d password=senha123",
+      "problemMatcher": []
+    }
+  ]
+}

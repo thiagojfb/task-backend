@@ -30,4 +30,11 @@ build/
 !**/src/test/**/build/
 
 ### VS Code ###
-.vscode/
+# Compartilhamos apenas os arquivos de projeto (launcher, tarefas e ajustes do build Java)
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+
+### Dados locais do H2 (Princípio VI) ###
+dados/

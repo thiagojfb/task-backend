@@ -1,0 +1,166 @@
+{
+  "realm": "tarefas",
+  "displayName": "Tarefas",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-tarefas",
+    "description": "${role_default-roles}",
+    "composite": true,
+    "clientRole": false
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "usuario",
+        "description": "Usuário comum: acessa somente as próprias tarefas",
+        "composite": false,
+        "clientRole": false
+      },
+      { "name": "offline_access", "description": "${role_offline-access}", "composite": false, "clientRole": false },
+      { "name": "uma_authorization", "description": "${role_uma_authorization}", "composite": false, "clientRole": false },
+      {
+        "name": "default-roles-tarefas",
+        "description": "Papéis atribuídos automaticamente a todo usuário novo (inclui usuario)",
+        "composite": true,
+        "composites": { "realm": ["usuario", "offline_access", "uma_authorization"] },
+        "clientRole": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "tarefas-frontend",
+      "name": "Interface web de tarefas",
+      "description": "Cliente público usado pelo servidor Next.js (login por usuário/senha e refresh)",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:5173",
+      "redirectUris": ["http://localhost:*", "http://localhost:*/*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email", "basic"],
+      "optionalClientScopes": ["offline_access"]
+    },
+    {
+      "clientId": "tarefas-api",
+      "name": "API de tarefas (service account)",
+      "description": "Cliente confidencial usado pela API para cadastrar usuários via Admin REST API",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "tarefas-api-secret-dev",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "redirectUris": [],
+      "webOrigins": [],
+      "defaultClientScopes": ["roles", "profile", "email", "basic"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "tarefas-teste",
+      "name": "Cliente de testes e Swagger",
+      "description": "Cliente público com Direct Access Grants para obter token por login e senha (apenas desenvolvimento e testes)",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [],
+      "webOrigins": ["+"],
+      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email", "basic"],
+      "optionalClientScopes": ["offline_access"]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-tarefas-api",
+      "enabled": true,
+      "serviceAccountClientId": "tarefas-api",
+      "realmRoles": [],
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users"]
+      }
+    },
+    {
+      "username": "ana",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Silva",
+      "email": "ana@exemplo.com.br",
+      "credentials": [
+        { "type": "password", "value": "senha123", "temporary": false }
+      ],
+      "realmRoles": ["usuario"]
+    },
+    {
+      "username": "bruno",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bruno",
+      "lastName": "Souza",
+      "email": "bruno@exemplo.com.br",
+      "credentials": [
+        { "type": "password", "value": "senha123", "temporary": false }
+      ],
+      "realmRoles": ["usuario"]
+    },
+    {
+      "username": "semnome",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "semnome@exemplo.com.br",
+      "credentials": [
+        { "type": "password", "value": "senha123", "temporary": false }
+      ],
+      "realmRoles": ["usuario"]
+    },
+    {
+      "username": "visitante",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Visitante",
+      "lastName": "Sem Papel",
+      "email": "visitante@exemplo.com.br",
+      "credentials": [
+        { "type": "password", "value": "senha123", "temporary": false }
+      ],
+      "realmRoles": []
+    }
+  ]
+}
