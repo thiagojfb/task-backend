@@ -38,3 +38,6 @@ build/
 
 ### Dados locais do H2 (Princípio VI) ###
 dados/
+
+# Segredos do Kamal (modelo versionado em .kamal/secrets.example)
+.kamal/secrets

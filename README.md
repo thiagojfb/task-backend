@@ -127,6 +127,40 @@ Testcontainers — o Docker precisa estar em execução) e falha se a cobertura 
 > Se o seu IDE compila automaticamente em `target/classes`, desative o autobuild (já configurado em
 > `.vscode/settings.json`) para não sobrescrever as classes geradas pelo MapStruct durante o build Maven.
 
+## Publicação em produção (Hetzner + Kamal)
+
+A configuração fica em [`config/deploy.yml`](config/deploy.yml) e publica a aplicação inteira num servidor
+Hetzner:
+
+| Peça | Como roda | Exposição |
+|------|-----------|-----------|
+| Front (`../task-frontend`) | serviço principal do Kamal, atrás do kamal-proxy | `https://tarefas.<ip>.sslip.io` (Let's Encrypt) |
+| API (esta) | accessory `api` (`thiagojfb/task-backend:<commit>`) | só rede interna (`tarefas-api:8080`) |
+| Keycloak | accessory `keycloak` | só rede interna (`tarefas-keycloak:8080`) |
+
+O navegador só fala com o front (BFF); API e Keycloak não têm porta publicada. Os dados ficam nos volumes
+Docker `tarefas-api-dados` (H2) e `tarefas-keycloak-dados`. Em produção o realm é importado de
+[`keycloak/producao/realm-export.json`](keycloak/producao/realm-export.json): sem usuários nem client de
+teste, e com o segredo do client `tarefas-api` vindo de `.kamal/secrets`.
+
+**Pré-requisitos:** Kamal (`gem install kamal`), Docker em execução, acesso SSH como `root` ao servidor com a
+sua chave, portas 22, 80 e 443 liberadas no firewall da Hetzner, os dois repositórios lado a lado em
+`C:\Ambiente` e um `.kamal/secrets` preenchido (modelo em [`.kamal/secrets.example`](.kamal/secrets.example);
+o arquivo real está no `.gitignore`).
+
+```bat
+deploy-kamal.bat setup    :: primeira vez: instala Docker/kamal-proxy, sobe Keycloak + API e publica o front
+deploy-kamal.bat          :: novas versões da API e do front
+deploy-kamal.bat api      :: só a API
+deploy-kamal.bat front    :: só o front
+```
+
+Produção sai da `master`: o script recusa publicar com alterações sem commit e avisa se a branch não for a
+`master`. Logs: `kamal app logs`, `kamal accessory logs api`, `kamal accessory logs keycloak`.
+
+> Alterou `keycloak/realm-export.json`? Reflita a mudança em `keycloak/producao/realm-export.json`. Assim como
+> no ambiente local, a importação só acontece quando o realm ainda não existe no servidor.
+
 ## Estrutura de pacotes
 
 ```

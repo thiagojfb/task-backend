@@ -1,0 +1,94 @@
+<%
+  # IP do servidor Hetzner: único lugar a alterar ao trocar de servidor.
+  servidor = "SERVIDOR_IP"
+  # sslip.io resolve tarefas.<ip>.sslip.io para o próprio IP, sem configurar DNS.
+  dominio = "tarefas.#{servidor}.sslip.io"
+  # Versão (tag) da imagem da API; o deploy-kamal.bat define API_VERSAO com o commit do task-backend.
+  api_versao = ENV.fetch("API_VERSAO", "latest")
+%>
+# Publicação na Hetzner com Kamal 2. Use o deploy-kamal.bat (ele gera e envia a imagem da API e chama o Kamal).
+# Arquitetura: o navegador só acessa o front (Next.js, BFF) pelo kamal-proxy em HTTPS; API e Keycloak ficam
+# apenas na rede interna "kamal" do Docker e são acessados pelo servidor do Next pelos nomes dos containers.
+service: tarefas
+
+# Serviço principal: o front-end, gerado pelo Kamal a partir do repositório vizinho ../task-frontend
+image: thiagojfb/task-frontend
+
+servers:
+  web:
+    - <%= servidor %>
+
+ssh:
+  user: root
+
+registry:
+  username: thiagojfb
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  context: ../task-frontend
+  dockerfile: ../task-frontend/Dockerfile
+
+deploy_timeout: 60
+drain_timeout: 30
+
+# HTTPS com certificado Let's Encrypt emitido automaticamente pelo kamal-proxy
+proxy:
+  host: <%= dominio %>
+  ssl: true
+  app_port: 3000
+  healthcheck:
+    path: /login
+    interval: 3
+    timeout: 10
+
+env:
+  clear:
+    AUTH_URL: https://<%= dominio %>
+    AUTH_TRUST_HOST: "true"
+    # Chamadas feitas pelo servidor do Next (o navegador nunca acessa API nem Keycloak diretamente)
+    API_URL: http://tarefas-api:8080
+    KEYCLOAK_URL_INTERNO: http://tarefas-keycloak:8080
+    KEYCLOAK_REALM: tarefas
+    KEYCLOAK_CLIENT_ID: tarefas-frontend
+  secret:
+    - AUTH_SECRET
+
+accessories:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    host: <%= servidor %>
+    # Emissor fixo no nome interno: os tokens trazem iss = http://tarefas-keycloak:8080/realms/tarefas,
+    # o mesmo valor validado pela API. Sem porta publicada: o console admin não fica exposto na internet.
+    cmd: >-
+      start --db=dev-file --http-enabled=true --hostname=http://tarefas-keycloak:8080
+      --hostname-backchannel-dynamic=true --health-enabled=true --import-realm
+    env:
+      clear:
+        KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      secret:
+        - KC_BOOTSTRAP_ADMIN_PASSWORD
+        # Substitui o marcador ${KEYCLOAK_ADMIN_CLIENT_SECRET} do realm de produção na primeira importação
+        - KEYCLOAK_ADMIN_CLIENT_SECRET
+    files:
+      # Realm sem usuários nem client de teste; só é importado quando o realm ainda não existe
+      - keycloak/producao/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    volumes:
+      - tarefas-keycloak-dados:/opt/keycloak/data
+
+  api:
+    image: thiagojfb/task-backend:<%= api_versao %>
+    host: <%= servidor %>
+    env:
+      clear:
+        SPRING_PROFILES_ACTIVE: docker
+        KEYCLOAK_ISSUER_URI: http://tarefas-keycloak:8080/realms/tarefas
+        KEYCLOAK_JWK_SET_URI: http://tarefas-keycloak:8080/realms/tarefas/protocol/openid-connect/certs
+        KEYCLOAK_ADMIN_URL: http://tarefas-keycloak:8080
+      secret:
+        - KEYCLOAK_ADMIN_CLIENT_SECRET
+    volumes:
+      # Volume nomeado: herda o dono (usuário app) de /app/dados da imagem, então o H2 consegue gravar
+      - tarefas-api-dados:/app/dados
