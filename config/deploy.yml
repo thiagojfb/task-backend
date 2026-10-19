@@ -1,6 +1,6 @@
 <%
   # IP do servidor Hetzner: único lugar a alterar ao trocar de servidor.
-  servidor = "SERVIDOR_IP"
+  servidor = "195.201.43.108"
   # sslip.io resolve tarefas.<ip>.sslip.io para o próprio IP, sem configurar DNS.
   dominio = "tarefas.#{servidor}.sslip.io"
   # Versão (tag) da imagem da API; o deploy-kamal.bat define API_VERSAO com o commit do task-backend.
