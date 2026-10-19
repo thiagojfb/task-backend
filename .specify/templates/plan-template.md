@@ -40,7 +40,19 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Avaliar cada portão abaixo contra `.specify/memory/constitution.md` (v1.0.0). Marcar
+✅ (conforme), ⚠ (violação justificada em Complexity Tracking) ou ❌ (bloqueio).
+
+| # | Princípio | Portão | Status |
+|---|-----------|--------|--------|
+| I | Arquitetura em Camadas | Novas classes mapeadas para `controller`/`service`/`repository`/`dto`/`entity`/`mapper`/`config`/`exception`; entidades não expostas em endpoints; serviços sem estado | [ ] |
+| II | Idioma Português | Nomes, mensagens, Javadoc, Swagger e documentos desta feature em português | [ ] |
+| III | Testes Primeiro / 100% | Tarefas de teste (unidade + integração) precedem implementação; `jacoco:check` a 100% mantido; exclusões justificadas | [ ] |
+| IV | Segurança Keycloak | Endpoints protegidos por JWT; roles mapeadas; nenhum armazenamento local de credenciais | [ ] |
+| V | Contrato OpenAPI | `@Operation`/`@ApiResponses`/`@Schema` em português; contrato salvo em `contracts/` | [ ] |
+| VI | Persistência H2 + Flyway | Alterações de esquema via `V{n}__*.sql`; `ddl-auto=validate`; H2 em arquivo fora dos testes | [ ] |
+| VII | Docker | `Dockerfile`/`compose.yaml` atualizados se dependências/perfis mudaram; sem segredos em código | [ ] |
+| VIII | Simplicidade / Lombok | DTOs como `record`; injeção por construtor; abstrações extras justificadas | [ ] |
 
 ## Project Structure
 
@@ -65,17 +77,29 @@ specs/[###-feature]/
 -->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+# [REMOVE IF UNUSED] Option 1: Spring Boot / Maven (DEFAULT — Princípio I da constituição)
+src/main/java/com/task/task_backend/
+├── controller/
+├── service/
+├── repository/
+├── dto/
+├── entity/
+├── mapper/
+├── config/
+└── exception/
+src/main/resources/
+├── application.yml
+├── application-{perfil}.yml
+└── db/migration/            # Flyway V{n}__descricao.sql
 
-tests/
-├── contract/
-├── integration/
-└── unit/
+src/test/java/com/task/task_backend/
+├── unit/                    # JUnit 5 + Mockito, por camada
+└── integration/             # @SpringBootTest + MockMvc, H2 + Keycloak efêmero
+src/test/resources/
+
+Dockerfile
+compose.yaml
+keycloak/realm-export.json
 
 # [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
 backend/

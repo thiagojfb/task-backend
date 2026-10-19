@@ -8,6 +8,12 @@
 
 **Input**: User description: "$ARGUMENTS"
 
+<!--
+  CONSTITUIÇÃO (Princípio II): o conteúdo desta especificação — histórias, cenários,
+  requisitos, entidades e critérios — DEVE ser redigido em português do Brasil.
+  Os títulos de seção do template permanecem para compatibilidade com as ferramentas.
+-->
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--

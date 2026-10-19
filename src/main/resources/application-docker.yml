@@ -1,0 +1,21 @@
+# Perfil de execução em container: H2 em volume e Keycloak acessível pela rede interna do Compose
+spring:
+  datasource:
+    url: jdbc:h2:file:/app/dados/tarefas
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Emissor visto pelo navegador/cliente (host) e JWKS acessível pela rede interna
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+
+logging:
+  level:
+    com.task.task_backend: INFO

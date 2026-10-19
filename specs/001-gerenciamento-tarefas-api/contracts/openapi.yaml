@@ -1,0 +1,626 @@
+openapi: 3.1.0
+info:
+  title: API de Gerenciamento de Tarefas
+  version: "1.0.0"
+  description: |
+    Lista de tarefas pessoais com prioridade, controle financeiro (valor em reais),
+    reordenação manual, histórico de alterações e autenticação via Keycloak.
+    Todas as operações exigem token JWT (Bearer) emitido pelo realm `tarefas`.
+    Cada usuário acessa somente as próprias tarefas.
+servers:
+  - url: http://localhost:8080
+    description: Desenvolvimento local
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Tarefas
+    description: Cadastro, consulta, edição, conclusão, reordenação e exclusão de tarefas
+  - name: Histórico
+    description: Linha do tempo de alterações de uma tarefa
+  - name: Financeiro
+    description: Indicadores financeiros
+
+paths:
+  /api/v1/tarefas:
+    get:
+      tags: [Tarefas]
+      operationId: listarTarefas
+      summary: Lista todas as tarefas do usuário autenticado
+      description: Retorna a lista completa (sem paginação) ordenada pela posição manual.
+      parameters:
+        - name: situacao
+          in: query
+          required: false
+          description: Filtro rápido por situação. Padrão `TODAS`.
+          schema:
+            $ref: "#/components/schemas/FiltroSituacao"
+        - name: busca
+          in: query
+          required: false
+          description: Trecho da descrição; ignora maiúsculas/minúsculas e acentos.
+          schema:
+            type: string
+            maxLength: 500
+            example: lampada
+      responses:
+        "200":
+          description: Lista de tarefas (pode ser vazia)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TarefaResposta"
+        "400":
+          $ref: "#/components/responses/ErroValidacao"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+    post:
+      tags: [Tarefas]
+      operationId: criarTarefa
+      summary: Cadastra uma nova tarefa
+      description: |
+        A data de abertura é gerada automaticamente, a situação inicia como `ABERTA`
+        e a tarefa ocupa a última posição da lista. Gera registro de histórico `CRIACAO`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TarefaRequisicao"
+      responses:
+        "201":
+          description: Tarefa criada
+          headers:
+            Location:
+              description: URL da tarefa criada
+              schema:
+                type: string
+                format: uri
+                example: /api/v1/tarefas/3fa85f64-5717-4562-b3fc-2c963f66afa6
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TarefaResposta"
+        "400":
+          $ref: "#/components/responses/ErroValidacao"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+
+  /api/v1/tarefas/resumo-financeiro:
+    get:
+      tags: [Financeiro]
+      operationId: obterResumoFinanceiro
+      summary: Total a gastar no mês corrente
+      description: |
+        Soma dos valores das tarefas **abertas** do usuário cuja data prevista de
+        conclusão está dentro do mês corrente (fuso America/Sao_Paulo). Tarefas sem
+        data prevista não entram no cálculo.
+      responses:
+        "200":
+          description: Resumo financeiro do mês
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumoFinanceiroResposta"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+
+  /api/v1/tarefas/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TarefaId"
+    get:
+      tags: [Tarefas]
+      operationId: obterTarefa
+      summary: Obtém uma tarefa pelo identificador
+      responses:
+        "200":
+          description: Tarefa encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TarefaResposta"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+    put:
+      tags: [Tarefas]
+      operationId: editarTarefa
+      summary: Edita os campos de conteúdo de uma tarefa
+      description: |
+        Substitui descrição, prioridade, data prevista de conclusão e valor. Permitido
+        em tarefas abertas ou concluídas. Gera um registro de histórico `ALTERACAO`
+        por campo efetivamente alterado; nenhum registro se nada mudou.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TarefaRequisicao"
+      responses:
+        "200":
+          description: Tarefa atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TarefaResposta"
+        "400":
+          $ref: "#/components/responses/ErroValidacao"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+    delete:
+      tags: [Tarefas]
+      operationId: excluirTarefa
+      summary: Exclui definitivamente uma tarefa
+      description: Remove a tarefa e todo o seu histórico; reorganiza as posições restantes.
+      responses:
+        "204":
+          description: Tarefa excluída
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+  /api/v1/tarefas/{id}/concluir:
+    parameters:
+      - $ref: "#/components/parameters/TarefaId"
+    patch:
+      tags: [Tarefas]
+      operationId: concluirTarefa
+      summary: Marca a tarefa como concluída
+      description: |
+        Define `situacao = CONCLUIDA`, registra `dataConclusaoReal` e move a tarefa
+        automaticamente para o final da lista (a mudança de posição não gera histórico).
+        Idempotente: tarefa já concluída retorna 200 sem gerar histórico.
+      responses:
+        "200":
+          description: Tarefa concluída
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TarefaResposta"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+  /api/v1/tarefas/{id}/reabrir:
+    parameters:
+      - $ref: "#/components/parameters/TarefaId"
+    patch:
+      tags: [Tarefas]
+      operationId: reabrirTarefa
+      summary: Reabre uma tarefa concluída
+      description: |
+        Define `situacao = ABERTA` e apaga `dataConclusaoReal`. Idempotente: tarefa já
+        aberta retorna 200 sem gerar histórico.
+      responses:
+        "200":
+          description: Tarefa reaberta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TarefaResposta"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+  /api/v1/tarefas/{id}/mover:
+    parameters:
+      - $ref: "#/components/parameters/TarefaId"
+    patch:
+      tags: [Tarefas]
+      operationId: moverTarefa
+      summary: Move a tarefa para o topo, final ou posição específica
+      description: |
+        Reposiciona a tarefa e desloca as demais para manter a sequência contínua
+        1..N. Mover para a posição atual é uma operação sem efeito. Não gera histórico.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoverTarefaRequisicao"
+      responses:
+        "200":
+          description: Tarefa movida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TarefaResposta"
+        "400":
+          description: Posição fora do intervalo válido ou corpo inválido
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacao"
+              example:
+                type: about:blank
+                title: Posição inválida
+                status: 400
+                detail: A posição deve estar entre 1 e 5.
+                instance: /api/v1/tarefas/3fa85f64-5717-4562-b3fc-2c963f66afa6/mover
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+  /api/v1/tarefas/{id}/historico:
+    parameters:
+      - $ref: "#/components/parameters/TarefaId"
+    get:
+      tags: [Histórico]
+      operationId: listarHistorico
+      summary: Lista o histórico de alterações da tarefa
+      description: Registros ordenados do mais recente ao mais antigo.
+      responses:
+        "200":
+          description: Linha do tempo da tarefa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RegistroHistoricoResposta"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+        "403":
+          $ref: "#/components/responses/AcessoNegado"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+  /api/v1/preferencias:
+    get:
+      tags: [Preferências]
+      operationId: obterPreferencias
+      summary: Obtém as preferências do usuário
+      description: Filtro rápido preferido da lista; `TODAS` quando ainda não houver preferência salva. (Feature 003)
+      responses:
+        "200":
+          description: Preferências atuais
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferencias"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+    put:
+      tags: [Preferências]
+      operationId: salvarPreferencias
+      summary: Salva as preferências do usuário
+      description: Cria ou atualiza; vale para qualquer navegador ou dispositivo do usuário.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Preferencias"
+      responses:
+        "200":
+          description: Preferências salvas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferencias"
+        "400":
+          $ref: "#/components/responses/ErroValidacao"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token de acesso emitido pelo Keycloak (realm `tarefas`). Em desenvolvimento,
+        obtenha com login e senha via cliente `tarefas-teste`:
+        `POST http://localhost:8180/realms/tarefas/protocol/openid-connect/token`
+        (`grant_type=password&client_id=tarefas-teste&username=ana&password=senha123`).
+
+  parameters:
+    TarefaId:
+      name: id
+      in: path
+      required: true
+      description: Identificador da tarefa
+      schema:
+        type: string
+        format: uuid
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+  responses:
+    ErroValidacao:
+      description: Dados inválidos
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemaValidacao"
+          example:
+            type: about:blank
+            title: Dados inválidos
+            status: 400
+            detail: Um ou mais campos estão inválidos.
+            instance: /api/v1/tarefas
+            erros:
+              - campo: descricao
+                mensagem: A descrição é obrigatória.
+              - campo: valor
+                mensagem: O valor não pode ser negativo.
+    NaoAutenticado:
+      description: Token ausente, inválido ou expirado
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problema"
+          example:
+            type: about:blank
+            title: Não autenticado
+            status: 401
+            detail: É necessário um token de acesso válido.
+    AcessoNegado:
+      description: Token válido sem o papel `usuario`
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problema"
+          example:
+            type: about:blank
+            title: Acesso negado
+            status: 403
+            detail: Você não tem permissão para acessar este recurso.
+    NaoEncontrada:
+      description: Tarefa inexistente ou pertencente a outro usuário
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problema"
+          example:
+            type: about:blank
+            title: Tarefa não encontrada
+            status: 404
+            detail: Não existe tarefa com o identificador informado.
+
+  schemas:
+    Prioridade:
+      type: string
+      description: Prioridade da tarefa (Alta = vermelho, Média = amarelo, Baixa = azul)
+      enum: [ALTA, MEDIA, BAIXA]
+      example: ALTA
+
+    Situacao:
+      type: string
+      description: Situação da tarefa
+      enum: [ABERTA, CONCLUIDA]
+      example: ABERTA
+
+    FiltroSituacao:
+      type: string
+      description: Filtro rápido da barra lateral
+      enum: [TODAS, ABERTAS, CONCLUIDAS]
+      default: TODAS
+
+    DestinoMovimento:
+      type: string
+      description: Destino da movimentação
+      enum: [TOPO, FINAL, POSICAO]
+      example: TOPO
+
+    TipoRegistro:
+      type: string
+      description: Tipo do evento de histórico
+      enum: [CRIACAO, ALTERACAO, CONCLUSAO, REABERTURA]
+      example: ALTERACAO
+
+    TarefaRequisicao:
+      type: object
+      description: Dados para cadastrar ou editar uma tarefa (formulário unificado)
+      required: [descricao, prioridade]
+      properties:
+        descricao:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Descrição da tarefa (obrigatória, não pode ser só espaços)
+          example: Pagar conta de luz
+        prioridade:
+          $ref: "#/components/schemas/Prioridade"
+        dataPrevistaConclusao:
+          type: [string, "null"]
+          format: date
+          description: Prazo previsto (pode ser anterior à data atual)
+          example: "2026-09-30"
+        valor:
+          type: [number, "null"]
+          minimum: 0
+          multipleOf: 0.01
+          description: Valor em reais a gastar; nulo ou ausente equivale a 0,00
+          example: 250.00
+
+    TarefaResposta:
+      type: object
+      description: Representação completa de uma tarefa
+      required: [id, descricao, prioridade, situacao, dataAbertura, valor, posicao, atrasada]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        descricao:
+          type: string
+          example: Pagar conta de luz
+        prioridade:
+          $ref: "#/components/schemas/Prioridade"
+        situacao:
+          $ref: "#/components/schemas/Situacao"
+        dataAbertura:
+          type: string
+          format: date-time
+          description: Gerada automaticamente no cadastro
+          example: "2026-09-19T10:15:30"
+        dataPrevistaConclusao:
+          type: [string, "null"]
+          format: date
+          example: "2026-09-30"
+        dataConclusaoReal:
+          type: [string, "null"]
+          format: date-time
+          description: Preenchida quando a tarefa é concluída
+          example: null
+        valor:
+          type: number
+          description: Valor em reais com duas casas decimais
+          example: 250.00
+        posicao:
+          type: integer
+          minimum: 1
+          description: Posição manual na lista (1 = topo)
+          example: 1
+        atrasada:
+          type: boolean
+          description: Verdadeiro quando aberta e com data prevista anterior à data atual
+          example: false
+
+    MoverTarefaRequisicao:
+      type: object
+      description: Destino da movimentação. `posicao` é obrigatória apenas quando `destino = POSICAO`.
+      required: [destino]
+      properties:
+        destino:
+          $ref: "#/components/schemas/DestinoMovimento"
+        posicao:
+          type: [integer, "null"]
+          minimum: 1
+          description: Posição de destino (1..N) quando `destino = POSICAO`
+          example: 3
+
+    RegistroHistoricoResposta:
+      type: object
+      description: Evento da linha do tempo da tarefa
+      required: [id, usuarioNome, dataHora, tipo, descricao]
+      properties:
+        id:
+          type: string
+          format: uuid
+        usuarioNome:
+          type: string
+          description: Nome de exibição do autor (ou identificador, se indisponível)
+          example: Ana Silva
+        dataHora:
+          type: string
+          format: date-time
+          example: "2026-09-15T14:32:10"
+        tipo:
+          $ref: "#/components/schemas/TipoRegistro"
+        campo:
+          type: [string, "null"]
+          description: Campo alterado (nulo em CRIACAO)
+          example: valor
+        valorAnterior:
+          type: [string, "null"]
+          description: Valor anterior já formatado para exibição
+          example: R$ 50,00
+        valorNovo:
+          type: [string, "null"]
+          description: Novo valor já formatado para exibição
+          example: R$ 70,00
+        descricao:
+          type: string
+          description: Frase pronta para a interface
+          example: Modificado por Ana Silva em 15/09/2026 - Alterou valor de R$ 50,00 para R$ 70,00
+
+    ResumoFinanceiroResposta:
+      type: object
+      description: Indicador financeiro do mês corrente
+      required: [mes, ano, totalAGastar, totalFormatado]
+      properties:
+        mes:
+          type: integer
+          minimum: 1
+          maximum: 12
+          example: 9
+        ano:
+          type: integer
+          example: 2026
+        totalAGastar:
+          type: number
+          description: Soma dos valores das tarefas abertas com prazo no mês
+          example: 1250.00
+        totalFormatado:
+          type: string
+          description: Valor pronto para exibição
+          example: R$ 1.250,00
+
+    Preferencias:
+      type: object
+      description: Preferências de interface do usuário
+      required: [filtro]
+      properties:
+        filtro:
+          $ref: "#/components/schemas/FiltroSituacao"
+
+    Problema:
+      type: object
+      description: Erro padronizado (RFC 9457)
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: about:blank
+        title:
+          type: string
+          example: Tarefa não encontrada
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          example: Não existe tarefa com o identificador informado.
+        instance:
+          type: string
+          example: /api/v1/tarefas/3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+    ProblemaValidacao:
+      allOf:
+        - $ref: "#/components/schemas/Problema"
+        - type: object
+          properties:
+            erros:
+              type: array
+              description: Lista de campos inválidos
+              items:
+                type: object
+                required: [campo, mensagem]
+                properties:
+                  campo:
+                    type: string
+                    example: descricao
+                  mensagem:
+                    type: string
+                    example: A descrição é obrigatória.

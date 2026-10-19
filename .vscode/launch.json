@@ -1,0 +1,39 @@
+{
+  // Requer a extensão "Extension Pack for Java" (vscjava.vscode-java-pack).
+  // Sobe a API localmente com o perfil dev: H2 persistente em ./dados/tarefas.mv.db
+  // (mesmo arquivo usado pelo container) e Keycloak do Docker Compose em http://localhost:8180.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "API local (dev + H2 em ./dados) — sobe Keycloak antes",
+      "request": "launch",
+      "mainClass": "com.task.task_backend.TaskBackendApplication",
+      "projectName": "task-backend",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "api: preparar ambiente local",
+      "env": {
+        "SPRING_PROFILES_ACTIVE": "dev",
+        // Porta local da API (8080 costuma estar ocupada nesta máquina). Swagger: http://localhost:8081/swagger-ui.html
+        "SERVER_PORT": "8081"
+      },
+      "vmArgs": "-Dfile.encoding=UTF-8 -Duser.timezone=America/Sao_Paulo",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "API local (dev + H2 em ./dados) — Keycloak já em execução",
+      "request": "launch",
+      "mainClass": "com.task.task_backend.TaskBackendApplication",
+      "projectName": "task-backend",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "api: preparar sem Keycloak",
+      "env": {
+        "SPRING_PROFILES_ACTIVE": "dev",
+        "SERVER_PORT": "8081"
+      },
+      "vmArgs": "-Dfile.encoding=UTF-8 -Duser.timezone=America/Sao_Paulo",
+      "console": "integratedTerminal"
+    }
+  ]
+}

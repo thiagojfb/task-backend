@@ -1,0 +1,64 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      # Emissor fixo: todo token (obtido pelo navegador em localhost:8180 ou pela rede interna em keycloak:8080)
+      # carrega iss = http://localhost:8180/realms/tarefas, que é o valor validado pela API.
+      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    ports:
+      - "8180:8080"
+    volumes:
+      # Dados do Keycloak (banco dev embutido) na pasta do projeto: preserva usuários e seus identificadores
+      # (sub) entre stop/start, down/up e até down -v. Apague ./dados/keycloak para recriar o realm do zero.
+      - ./dados/keycloak:/opt/keycloak/data
+      - ./keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      # A imagem oficial não possui curl; usa /dev/tcp do bash contra o endpoint de gestão (porta 9000)
+      test:
+        - CMD-SHELL
+        - >
+          exec 3<>/dev/tcp/localhost/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status": "UP"' <&3
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
+    networks:
+      tarefas-rede:
+        aliases: [keycloak]
+
+  app:
+    build: .
+    ports:
+      # Porta do host configurável (ex.: APP_PORTA=8081 docker compose up) caso 8080 esteja ocupada
+      - "${APP_PORTA:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      # Emissor visto pelo navegador (host) e JWKS acessível pela rede interna do Compose
+      KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/tarefas
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/tarefas/protocol/openid-connect/certs
+      # Admin REST API (cadastro de usuários) pela rede interna; segredo de desenvolvimento do realm
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-tarefas-api-secret-dev}
+    volumes:
+      # Banco H2 da API na pasta do projeto (./dados/tarefas.mv.db) — o mesmo arquivo usado pela execução
+      # local no VS Code (perfil dev), então os dados são compartilhados e persistem em qualquer cenário.
+      - ./dados:/app/dados
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    networks:
+      tarefas-rede:
+        aliases: [task-backend]
+
+networks:
+  # Rede compartilhada com o frontend (task-frontend/compose.yaml a referencia como external).
+  # Suba o backend primeiro: ele cria a rede.
+  tarefas-rede:
+    name: tarefas-rede

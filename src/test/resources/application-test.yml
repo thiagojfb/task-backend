@@ -1,0 +1,21 @@
+# Perfil de testes: H2 em memória com as mesmas migrações Flyway.
+# O jwk-set-uri abaixo é provisório e permite carregar o contexto sem Keycloak;
+# os testes de integração o sobrescrevem via @DynamicPropertySource.
+spring:
+  datasource:
+    url: jdbc:h2:mem:tarefas;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:0/certs
+
+logging:
+  level:
+    com.task.task_backend: INFO

@@ -1,0 +1,8 @@
+{
+  // O compilador do IDE (JDT) não roda o processador do MapStruct e sobrescreve target/classes sem os
+  // *MapperImpl. Por isso: sem autobuild, sem build forçado antes do launch — a compilação é do Maven
+  // (tarefa "maven: compilar" encadeada nos launchers).
+  "java.autobuild.enabled": false,
+  "java.debug.settings.forceBuildBeforeLaunch": false,
+  "java.configuration.updateBuildConfiguration": "automatic"
+}
